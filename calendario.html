@@ -3,208 +3,188 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Study Planner v4</title>
+  <title>Study Planner v5</title>
   <style>
-    .columns { display: flex; gap: 20px; }
-    .column { flex: 1; border: 1px solid #ccc; padding: 10px; }
-    .column h3 { text-align: center; }
-    .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937; --border:#334155; --text:#e5e7eb; --sub:#94a3b8; --accent:#6366f1; }
+    html,body{height:100%;}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Noto Sans,sans-serif;font-size:18px;display:flex;flex-direction:column;}
+    h1{text-align:center;font-size:2rem;margin:22px 0;}
+    h2{font-size:1.2rem;margin:16px;color:var(--sub);}    
+    .wrap{max-width:1100px;margin:0 auto;padding:10px 14px 28px;flex:1 0 auto}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    .toolbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+    label{font-size:1rem;color:var(--sub);display:flex;flex-direction:column;gap:6px}
+    input[type="text"],input[type="number"],input[type="date"],input[type="file"]{background:var(--muted);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:140px;outline:none;font-size:1rem}
+    button{appearance:none;border:none;background:var(--accent);color:white;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700;font-size:1rem}
+    button:hover{filter:brightness(1.1)}
+    .columns{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap}
+    .column{flex:1 1 360px;border:1px solid var(--border);border-radius:16px;background:var(--muted);padding:14px}
+    .column h3{text-align:center;margin-top:0;font-size:1.2rem}
+    .summary{margin-top:18px}
+    footer{flex:0 0 auto;text-align:center;color:var(--sub);padding:14px 0;border-top:1px solid var(--border);background:rgba(17,24,39,.6)}
+    @media (max-width: 640px){ body{font-size:17px} h1{font-size:1.6rem} .wrap{padding:8px} input,button{font-size:1rem} }
   </style>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const dateField = document.getElementById("currentDate");
-      const updateButton = document.getElementById("updateButton");
-      const exportButton = document.getElementById("exportButton");
-      const importInput = document.getElementById("importInput");
-      const autoSaveToggle = document.getElementById("autoSaveToggle");
+    document.addEventListener("DOMContentLoaded",()=>{
+      // DOM refs
+      const dateField=document.getElementById("currentDate");
+      const updateButton=document.getElementById("updateButton");
+      const importInput=document.getElementById("importInput");
+      const exportButton=document.getElementById("exportButton");
+      const statOutput=document.getElementById("statOutput");
+      const autoOutput=document.getElementById("autoOutput");
+      const summaryOutput=document.getElementById("summaryOutput");
+      const subject1NameField=document.getElementById("subject1Name");
+      const subject2NameField=document.getElementById("subject2Name");
+      const subject1LessonsField=document.getElementById("subject1Lessons");
+      const subject2LessonsField=document.getElementById("subject2Lessons");
+      const endDateField=document.getElementById("endDate");
+      const lessonsPerDayField=document.getElementById("lessonsPerDay");
+      const lastLesson1Field=document.getElementById("lastLesson1");
+      const lastLesson2Field=document.getElementById("lastLesson2");
+      const subject1Title=document.getElementById("subject1Title");
+      const subject2Title=document.getElementById("subject2Title");
+      const ll1Text=document.getElementById("ll1Text");
+      const ll2Text=document.getElementById("ll2Text");
 
-      const statOutput = document.getElementById("statOutput");
-      const autoOutput = document.getElementById("autoOutput");
-      const summaryOutput = document.getElementById("summaryOutput");
-
-      const lastLesson1Field = document.getElementById("lastLesson1");
-      const lastLesson2Field = document.getElementById("lastLesson2");
-      const subject1NameField = document.getElementById("subject1Name");
-      const subject2NameField = document.getElementById("subject2Name");
-      const subject1LessonsField = document.getElementById("subject1Lessons");
-      const subject2LessonsField = document.getElementById("subject2Lessons");
-      const endDateField = document.getElementById("endDate");
-
-      const subject1Title = document.getElementById("subject1Title");
-      const subject2Title = document.getElementById("subject2Title");
-      const lastLesson1Label = document.getElementById("lastLesson1Label");
-      const lastLesson2Label = document.getElementById("lastLesson2Label");
-
-      function getConfig() {
+      function getConfig(){
         return {
           currentDate: dateField.value,
-          lastLesson1: lastLesson1Field.value,
-          lastLesson2: lastLesson2Field.value,
           subject1Name: subject1NameField.value,
-          subject2Name: subject2NameField.value,
           subject1Lessons: subject1LessonsField.value,
+          subject2Name: subject2NameField.value,
           subject2Lessons: subject2LessonsField.value,
-          endDate: endDateField.value
+          lessonsPerDay: lessonsPerDayField.value,
+          endDate: endDateField.value,
+          lastLesson1: lastLesson1Field.value,
+          lastLesson2: lastLesson2Field.value
         };
       }
-
-      function loadConfig(config) {
-        dateField.value = config.currentDate || new Date().toISOString().split("T")[0];
-        lastLesson1Field.value = config.lastLesson1 || 13;
-        lastLesson2Field.value = config.lastLesson2 || 20;
-        subject1NameField.value = config.subject1Name || "Materia 1";
-        subject2NameField.value = config.subject2Name || "Materia 2";
-        subject1LessonsField.value = config.subject1Lessons || 72;
-        subject2LessonsField.value = config.subject2Lessons || 72;
-        endDateField.value = config.endDate || "2025-02-12";
+      function setConfig(data){
+        if(data.currentDate!==undefined) dateField.value=data.currentDate;
+        if(data.subject1Name!==undefined) subject1NameField.value=data.subject1Name;
+        if(data.subject1Lessons!==undefined) subject1LessonsField.value=data.subject1Lessons;
+        if(data.subject2Name!==undefined) subject2NameField.value=data.subject2Name;
+        if(data.subject2Lessons!==undefined) subject2LessonsField.value=data.subject2Lessons;
+        if(data.lessonsPerDay!==undefined) lessonsPerDayField.value=data.lessonsPerDay;
+        if(data.endDate!==undefined) endDateField.value=data.endDate;
+        if(data.lastLesson1!==undefined) lastLesson1Field.value=data.lastLesson1;
+        if(data.lastLesson2!==undefined) lastLesson2Field.value=data.lastLesson2;
       }
-
-      function exportConfig() {
-        const config = getConfig();
-        const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "studio-config.json";
-        a.click();
-        URL.revokeObjectURL(url);
+      function exportConfig(){
+        const cfg=getConfig();
+        const blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});
+        const url=URL.createObjectURL(blob); const a=document.createElement("a");
+        a.href=url; a.download="studio-config.json"; a.click(); URL.revokeObjectURL(url);
       }
-
-      function importConfig(evt) {
-        const file = evt.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-          const config = JSON.parse(e.target.result);
-          loadConfig(config);
-          updateSchedule();               // solo ricalcolo, nessun salvataggio
-        };
+      function importConfig(evt){
+        const file=evt.target.files[0]; if(!file) return;
+        const reader=new FileReader();
+        reader.onload=e=>{ try{ const data=JSON.parse(e.target.result); setConfig(data); updateSchedule(); }catch(err){ alert("File JSON non valido"); } };
         reader.readAsText(file);
       }
 
-      function updateSchedule() {
-        const config = getConfig();
+      function updateSchedule(){
+        const subj1=subject1NameField.value||"Materia 1";
+        const subj2=subject2NameField.value||"Materia 2";
+        const total1=Math.max(0,parseInt(subject1LessonsField.value)||72);
+        const total2=Math.max(0,parseInt(subject2LessonsField.value)||72);
+        const endDate=new Date(endDateField.value);
+        const today=new Date(dateField.value);
+        const perDay=Math.max(1,parseInt(lessonsPerDayField.value)||3);
+        const last1=Math.max(0,parseInt(lastLesson1Field.value)||0);
+        const last2=Math.max(0,parseInt(lastLesson2Field.value)||0);
+        const daysRemaining=Math.max(0,Math.ceil((endDate-today)/(1000*60*60*24)));
 
-        const lastLesson1 = parseInt(config.lastLesson1) || 13;
-        const lastLesson2 = parseInt(config.lastLesson2) || 20;
-        const totalLessons1 = parseInt(config.subject1Lessons) || 72;
-        const totalLessons2 = parseInt(config.subject2Lessons) || 72;
+        // Update labels with subject names
+        subject1Title.textContent=subj1; subject2Title.textContent=subj2;
+        ll1Text.textContent=`Ultima lezione completata ${subj1}`;
+        ll2Text.textContent=`Ultima lezione completata ${subj2}`;
 
-        const endDate = new Date(config.endDate);
-        const today = new Date(config.currentDate);
-        const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-
-        subject1Title.textContent = config.subject1Name;
-        subject2Title.textContent = config.subject2Name;
-        lastLesson1Label.textContent = `Ultima lezione di ${config.subject1Name} completata:`;
-        lastLesson2Label.textContent = `Ultima lezione di ${config.subject2Name} completata:`;
-
-        const schedule1 = [];
-        const schedule2 = [];
-        let lesson1 = lastLesson1 + 1;
-        let lesson2 = lastLesson2 + 1;
-
-        for (let day = 0; day < daysRemaining; day++) {
-          const currentDay = new Date(today.getTime() + day * 86400000);
-          const formattedDate = currentDay.toISOString().split("T")[0];
-
-          if (lesson1 <= totalLessons1) {
-            schedule1.push(`${formattedDate}: Lezione ${lesson1}, ${lesson1 + 1}, e ${lesson1 + 2}`);
-            lesson1 += 3;
-          } else if (lesson2 <= totalLessons2) {
-            schedule2.push(`${formattedDate}: Lezione ${lesson2}, ${lesson2 + 1}, e ${lesson2 + 2}`);
-            lesson2 += 3;
+        const schedule1=[], schedule2=[];
+        let l1=last1+1, l2=last2+1;
+        for(let d=0; d<daysRemaining; d++){
+          const day=new Date(today.getTime()+d*86400000);
+          const dateStr=day.toISOString().split("T")[0];
+          if(l1<=total1){
+            const end=Math.min(l1+perDay-1,total1);
+            const list=[]; for(let n=l1;n<=end;n++) list.push(`Lezione ${n}`);
+            schedule1.push(`${dateStr}: ${list.join(", ")}`);
+            l1=end+1;
+          } else if(l2<=total2){
+            const end=Math.min(l2+perDay-1,total2);
+            const list=[]; for(let n=l2;n<=end;n++) list.push(`Lezione ${n}`);
+            schedule2.push(`${dateStr}: ${list.join(", ")}`);
+            l2=end+1;
           }
         }
+        statOutput.innerHTML=schedule1.join("<br>");
+        autoOutput.innerHTML=schedule2.join("<br>");
 
-        const remaining1 = totalLessons1 - lastLesson1;
-        const remaining2 = totalLessons2 - lastLesson2;
-        const totalRequiredDays = Math.ceil(remaining1 / 3) + Math.ceil(remaining2 / 3);
-        const delay = totalRequiredDays - daysRemaining;
-
-        statOutput.innerHTML = schedule1.join("<br>");
-        autoOutput.innerHTML = schedule2.join("<br>");
-        summaryOutput.innerHTML = `<br>${delay > 0 ? `Ritardo di ${delay} giorni` : `Anticipo di ${-delay} giorni`}`;
+        const rem1=Math.max(0,total1-last1), rem2=Math.max(0,total2-last2);
+        const totalRequiredDays = Math.ceil(rem1 / perDay) + Math.ceil(rem2 / perDay);
+        const delay = totalRequiredDays - daysRemaining; // >0 ritardo; <0 anticipo
+        const delayText = delay>0 ? `Ritardo di ${delay} giorni` : `Anticipo di ${-delay} giorni`;
+        summaryOutput.innerHTML=`${subj1}: ${rem1} lezioni rimanenti<br>${subj2}: ${rem2} lezioni rimanenti<br><strong>${delayText}</strong>`;
       }
 
-      // --- Salvataggio automatico solo quando cambiano i parametri (se attivo) ---
-      const watchedInputs = [
-        dateField, lastLesson1Field, lastLesson2Field,
-        subject1NameField, subject2NameField,
-        subject1LessonsField, subject2LessonsField, endDateField
-      ];
+      // Auto-recalc on parameter change
+      const watched=[dateField,subject1NameField,subject2NameField,subject1LessonsField,subject2LessonsField,endDateField,lessonsPerDayField,lastLesson1Field,lastLesson2Field];
+      watched.forEach(el=>{ ["change","input"].forEach(ev=> el.addEventListener(ev, updateSchedule)); });
 
-      function maybeAutoSave() {
-        if (autoSaveToggle.checked) {
-          exportConfig();
-        }
-      }
-
-      watchedInputs.forEach(el => {
-        el.addEventListener("change", () => {
-          // aggiorna l'UI (non salva di default) e, se il toggle è ON, esporta il file
-          updateSchedule();
-          maybeAutoSave();
-        });
-      });
-
-      // --- Pulsanti ---
-      updateButton.addEventListener("click", updateSchedule);  // NON salva file
-      exportButton.addEventListener("click", exportConfig);
-      importInput.addEventListener("change", importConfig);
+      // Buttons
+      updateButton.addEventListener("click",updateSchedule);
+      exportButton.addEventListener("click",exportConfig);
+      importInput.addEventListener("change",importConfig);
 
       // Init
-      loadConfig({});
+      dateField.value=new Date().toISOString().split("T")[0];
       updateSchedule();
     });
   </script>
 </head>
 <body>
-  <h1>Study Planner</h1>
+  <div class="wrap">
+    <h1>Study Planner v5</h1>
 
-  <h2>Impostazioni Materie</h2>
-  <div class="toolbar">
-    <label>Nome Materia 1: <input type="text" id="subject1Name"></label>
-    <label>Numero Lezioni: <input type="number" id="subject1Lessons"></label>
-    <label>Nome Materia 2: <input type="text" id="subject2Name"></label>
-    <label>Numero Lezioni: <input type="number" id="subject2Lessons"></label>
-    <label>Data di fine studio: <input type="date" id="endDate"></label>
-  </div>
-
-  <form id="lessonForm" style="margin-top:10px;">
-    <div class="toolbar">
-      <label for="currentDate">Data odierna:</label>
-      <input type="date" id="currentDate">
-
-      <label id="lastLesson1Label"></label>
-      <input type="number" id="lastLesson1">
-
-      <label id="lastLesson2Label"></label>
-      <input type="number" id="lastLesson2">
-
-      <button type="button" id="updateButton">Aggiorna</button>
-      <button type="button" id="exportButton">Salva configurazione</button>
-      <label>Carica configurazione: <input type="file" id="importInput" accept="application/json"></label>
-
-      <label style="margin-left:8px;">
-        <input type="checkbox" id="autoSaveToggle">
-        Salva automaticamente quando modifico i parametri
-      </label>
+    <h2>Impostazioni</h2>
+    <div class="card toolbar">
+      <label>Nome Materia 1<input type="text" id="subject1Name" placeholder="Statistica"></label>
+      <label>Numero Lezioni<input type="number" id="subject1Lessons" min="1" value="72"></label>
+      <label>Nome Materia 2<input type="text" id="subject2Name" placeholder="Automatica"></label>
+      <label>Numero Lezioni<input type="number" id="subject2Lessons" min="1" value="72"></label>
+      <label>Lezioni per giorno<input type="number" id="lessonsPerDay" min="1" value="3"></label>
+      <label>Data fine<input type="date" id="endDate" value="2025-02-12"></label>
+      <label>Carica configurazione<input type="file" id="importInput" accept="application/json"></label>
+      <button id="exportButton">Salva configurazione</button>
     </div>
-  </form>
 
-  <div class="columns" style="margin-top:14px;">
-    <div class="column">
-      <h3 id="subject1Title"></h3>
-      <div id="statOutput"></div>
+    <h2>Progressi</h2>
+    <div class="card toolbar">
+      <label>Data odierna<input type="date" id="currentDate"></label>
+      <label><span id="ll1Text">Ultima lezione completata Materia 1</span>
+        <input type="number" id="lastLesson1" min="0" value="0"></label>
+      <label><span id="ll2Text">Ultima lezione completata Materia 2</span>
+        <input type="number" id="lastLesson2" min="0" value="0"></label>
+      <button id="updateButton">Aggiorna</button>
     </div>
-    <div class="column">
-      <h3 id="subject2Title"></h3>
-      <div id="autoOutput"></div>
+
+    <div class="columns">
+      <div class="column">
+        <h3 id="subject1Title">Materia 1</h3>
+        <div id="statOutput"></div>
+      </div>
+      <div class="column">
+        <h3 id="subject2Title">Materia 2</h3>
+        <div id="autoOutput"></div>
+      </div>
+    </div>
+
+    <div class="card summary">
+      <h2>Riepilogo</h2>
+      <div id="summaryOutput"></div>
     </div>
   </div>
-
-  <h2>Riepilogo:</h2>
-  <div id="summaryOutput"></div>
+  <footer>Powered by ChatGPT</footer>
 </body>
 </html>
