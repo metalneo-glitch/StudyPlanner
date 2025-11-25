@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Study Planner v4</title>
+  <style>
+    .columns { display: flex; gap: 20px; }
+    .column { flex: 1; border: 1px solid #ccc; padding: 10px; }
+    .column h3 { text-align: center; }
+    .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  </style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const dateField = document.getElementById("currentDate");
+      const updateButton = document.getElementById("updateButton");
+      const exportButton = document.getElementById("exportButton");
+      const importInput = document.getElementById("importInput");
+      const autoSaveToggle = document.getElementById("autoSaveToggle");
+
+      const statOutput = document.getElementById("statOutput");
+      const autoOutput = document.getElementById("autoOutput");
+      const summaryOutput = document.getElementById("summaryOutput");
+
+      const lastLesson1Field = document.getElementById("lastLesson1");
+      const lastLesson2Field = document.getElementById("lastLesson2");
+      const subject1NameField = document.getElementById("subject1Name");
+      const subject2NameField = document.getElementById("subject2Name");
+      const subject1LessonsField = document.getElementById("subject1Lessons");
+      const subject2LessonsField = document.getElementById("subject2Lessons");
+      const endDateField = document.getElementById("endDate");
+
+      const subject1Title = document.getElementById("subject1Title");
+      const subject2Title = document.getElementById("subject2Title");
+      const lastLesson1Label = document.getElementById("lastLesson1Label");
+      const lastLesson2Label = document.getElementById("lastLesson2Label");
+
+      function getConfig() {
+        return {
+          currentDate: dateField.value,
+          lastLesson1: lastLesson1Field.value,
+          lastLesson2: lastLesson2Field.value,
+          subject1Name: subject1NameField.value,
+          subject2Name: subject2NameField.value,
+          subject1Lessons: subject1LessonsField.value,
+          subject2Lessons: subject2LessonsField.value,
+          endDate: endDateField.value
+        };
+      }
+
+      function loadConfig(config) {
+        dateField.value = config.currentDate || new Date().toISOString().split("T")[0];
+        lastLesson1Field.value = config.lastLesson1 || 13;
+        lastLesson2Field.value = config.lastLesson2 || 20;
+        subject1NameField.value = config.subject1Name || "Materia 1";
+        subject2NameField.value = config.subject2Name || "Materia 2";
+        subject1LessonsField.value = config.subject1Lessons || 72;
+        subject2LessonsField.value = config.subject2Lessons || 72;
+        endDateField.value = config.endDate || "2025-02-12";
+      }
+
+      function exportConfig() {
+        const config = getConfig();
+        const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "studio-config.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function importConfig(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          const config = JSON.parse(e.target.result);
+          loadConfig(config);
+          updateSchedule();               // solo ricalcolo, nessun salvataggio
+        };
+        reader.readAsText(file);
+      }
+
+      function updateSchedule() {
+        const config = getConfig();
+
+        const lastLesson1 = parseInt(config.lastLesson1) || 13;
+        const lastLesson2 = parseInt(config.lastLesson2) || 20;
+        const totalLessons1 = parseInt(config.subject1Lessons) || 72;
+        const totalLessons2 = parseInt(config.subject2Lessons) || 72;
+
+        const endDate = new Date(config.endDate);
+        const today = new Date(config.currentDate);
+        const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+
+        subject1Title.textContent = config.subject1Name;
+        subject2Title.textContent = config.subject2Name;
+        lastLesson1Label.textContent = `Ultima lezione di ${config.subject1Name} completata:`;
+        lastLesson2Label.textContent = `Ultima lezione di ${config.subject2Name} completata:`;
+
+        const schedule1 = [];
+        const schedule2 = [];
+        let lesson1 = lastLesson1 + 1;
+        let lesson2 = lastLesson2 + 1;
+
+        for (let day = 0; day < daysRemaining; day++) {
+          const currentDay = new Date(today.getTime() + day * 86400000);
+          const formattedDate = currentDay.toISOString().split("T")[0];
+
+          if (lesson1 <= totalLessons1) {
+            schedule1.push(`${formattedDate}: Lezione ${lesson1}, ${lesson1 + 1}, e ${lesson1 + 2}`);
+            lesson1 += 3;
+          } else if (lesson2 <= totalLessons2) {
+            schedule2.push(`${formattedDate}: Lezione ${lesson2}, ${lesson2 + 1}, e ${lesson2 + 2}`);
+            lesson2 += 3;
+          }
+        }
+
+        const remaining1 = totalLessons1 - lastLesson1;
+        const remaining2 = totalLessons2 - lastLesson2;
+        const totalRequiredDays = Math.ceil(remaining1 / 3) + Math.ceil(remaining2 / 3);
+        const delay = totalRequiredDays - daysRemaining;
+
+        statOutput.innerHTML = schedule1.join("<br>");
+        autoOutput.innerHTML = schedule2.join("<br>");
+        summaryOutput.innerHTML = `<br>${delay > 0 ? `Ritardo di ${delay} giorni` : `Anticipo di ${-delay} giorni`}`;
+      }
+
+      // --- Salvataggio automatico solo quando cambiano i parametri (se attivo) ---
+      const watchedInputs = [
+        dateField, lastLesson1Field, lastLesson2Field,
+        subject1NameField, subject2NameField,
+        subject1LessonsField, subject2LessonsField, endDateField
+      ];
+
+      function maybeAutoSave() {
+        if (autoSaveToggle.checked) {
+          exportConfig();
+        }
+      }
+
+      watchedInputs.forEach(el => {
+        el.addEventListener("change", () => {
+          // aggiorna l'UI (non salva di default) e, se il toggle è ON, esporta il file
+          updateSchedule();
+          maybeAutoSave();
+        });
+      });
+
+      // --- Pulsanti ---
+      updateButton.addEventListener("click", updateSchedule);  // NON salva file
+      exportButton.addEventListener("click", exportConfig);
+      importInput.addEventListener("change", importConfig);
+
+      // Init
+      loadConfig({});
+      updateSchedule();
+    });
+  </script>
+</head>
+<body>
+  <h1>Study Planner</h1>
+
+  <h2>Impostazioni Materie</h2>
+  <div class="toolbar">
+    <label>Nome Materia 1: <input type="text" id="subject1Name"></label>
+    <label>Numero Lezioni: <input type="number" id="subject1Lessons"></label>
+    <label>Nome Materia 2: <input type="text" id="subject2Name"></label>
+    <label>Numero Lezioni: <input type="number" id="subject2Lessons"></label>
+    <label>Data di fine studio: <input type="date" id="endDate"></label>
+  </div>
+
+  <form id="lessonForm" style="margin-top:10px;">
+    <div class="toolbar">
+      <label for="currentDate">Data odierna:</label>
+      <input type="date" id="currentDate">
+
+      <label id="lastLesson1Label"></label>
+      <input type="number" id="lastLesson1">
+
+      <label id="lastLesson2Label"></label>
+      <input type="number" id="lastLesson2">
+
+      <button type="button" id="updateButton">Aggiorna</button>
+      <button type="button" id="exportButton">Salva configurazione</button>
+      <label>Carica configurazione: <input type="file" id="importInput" accept="application/json"></label>
+
+      <label style="margin-left:8px;">
+        <input type="checkbox" id="autoSaveToggle">
+        Salva automaticamente quando modifico i parametri
+      </label>
+    </div>
+  </form>
+
+  <div class="columns" style="margin-top:14px;">
+    <div class="column">
+      <h3 id="subject1Title"></h3>
+      <div id="statOutput"></div>
+    </div>
+    <div class="column">
+      <h3 id="subject2Title"></h3>
+      <div id="autoOutput"></div>
+    </div>
+  </div>
+
+  <h2>Riepilogo:</h2>
+  <div id="summaryOutput"></div>
+</body>
+</html>
