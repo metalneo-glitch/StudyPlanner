@@ -3,32 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Study Planner v5</title>
+  <title>Study Planner v5.1</title>
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937; --border:#334155; --text:#e5e7eb; --sub:#94a3b8; --accent:#6366f1; }
     html,body{height:100%;}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Noto Sans,sans-serif;font-size:18px;display:flex;flex-direction:column;}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Noto Sans,sans-serif;
+      font-size:18px;
+      display:flex;
+      flex-direction:column;
+    }
     h1{text-align:center;font-size:2rem;margin:22px 0;}
     h2{font-size:1.2rem;margin:16px;color:var(--sub);}    
     .wrap{max-width:1100px;margin:0 auto;padding:10px 14px 28px;flex:1 0 auto}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
     .toolbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
     label{font-size:1rem;color:var(--sub);display:flex;flex-direction:column;gap:6px}
-    input[type="text"],input[type="number"],input[type="date"],input[type="file"]{background:var(--muted);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:140px;outline:none;font-size:1rem}
-    button{appearance:none;border:none;background:var(--accent);color:white;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:700;font-size:1rem}
+    input[type="text"],input[type="number"],input[type="date"],input[type="file"]{
+      background:var(--muted);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px 14px;
+      min-width:140px;
+      outline:none;
+      font-size:1rem;
+    }
+    button{
+      appearance:none;
+      border:none;
+      background:var(--accent);
+      color:white;
+      border-radius:12px;
+      padding:10px 14px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:0.95rem;
+      white-space:nowrap;
+    }
     button:hover{filter:brightness(1.1)}
     .columns{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap}
     .column{flex:1 1 360px;border:1px solid var(--border);border-radius:16px;background:var(--muted);padding:14px}
     .column h3{text-align:center;margin-top:0;font-size:1.2rem}
     .summary{margin-top:18px}
-    footer{flex:0 0 auto;text-align:center;color:var(--sub);padding:14px 0;border-top:1px solid var(--border);background:rgba(17,24,39,.6)}
+    .late{color:#f97373;font-weight:700;}
     @media (max-width: 640px){ body{font-size:17px} h1{font-size:1.6rem} .wrap{padding:8px} input,button{font-size:1rem} }
   </style>
   <script>
     document.addEventListener("DOMContentLoaded",()=>{
       // DOM refs
       const dateField=document.getElementById("currentDate");
-      const updateButton=document.getElementById("updateButton");
+      const setTodayBtn=document.getElementById("setTodayBtn");
       const importInput=document.getElementById("importInput");
       const exportButton=document.getElementById("exportButton");
       const statOutput=document.getElementById("statOutput");
@@ -46,6 +74,15 @@
       const subject2Title=document.getElementById("subject2Title");
       const ll1Text=document.getElementById("ll1Text");
       const ll2Text=document.getElementById("ll2Text");
+      const done1Button=document.getElementById("done1Button");
+      const done2Button=document.getElementById("done2Button");
+      const reset1Button=document.getElementById("reset1Button");
+      const reset2Button=document.getElementById("reset2Button");
+
+      function formatDate(d){
+        const mesi=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+        return d.getDate()+" "+mesi[d.getMonth()];
+      }
 
       function getConfig(){
         return {
@@ -87,14 +124,19 @@
       function updateSchedule(){
         const subj1=subject1NameField.value||"Materia 1";
         const subj2=subject2NameField.value||"Materia 2";
-        const total1=Math.max(0,parseInt(subject1LessonsField.value)||72);
-        const total2=Math.max(0,parseInt(subject2LessonsField.value)||72);
+        let total1=Math.max(0,parseInt(subject1LessonsField.value)||72);
+        let total2=Math.max(0,parseInt(subject2LessonsField.value)||72);
         const endDate=new Date(endDateField.value);
         const today=new Date(dateField.value);
         const perDay=Math.max(1,parseInt(lessonsPerDayField.value)||3);
-        const last1=Math.max(0,parseInt(lastLesson1Field.value)||0);
-        const last2=Math.max(0,parseInt(lastLesson2Field.value)||0);
-        const daysRemaining=Math.max(0,Math.ceil((endDate-today)/(1000*60*60*24)));
+        let last1=Math.max(0,parseInt(lastLesson1Field.value)||0);
+        let last2=Math.max(0,parseInt(lastLesson2Field.value)||0);
+
+        // clamp ultimo completato al massimo numero di lezioni
+        if(last1>total1){ last1=total1; lastLesson1Field.value=total1; }
+        if(last2>total2){ last2=total2; lastLesson2Field.value=total2; }
+
+        const msPerDay=1000*60*60*24;
 
         // Update labels with subject names
         subject1Title.textContent=subj1; subject2Title.textContent=subj2;
@@ -103,29 +145,53 @@
 
         const schedule1=[], schedule2=[];
         let l1=last1+1, l2=last2+1;
-        for(let d=0; d<daysRemaining; d++){
-          const day=new Date(today.getTime()+d*86400000);
-          const dateStr=day.toISOString().split("T")[0];
+        let dayIndex=0;
+        let lastStudyTime=null;
+
+        while(l1<=total1 || l2<=total2){
+          const day=new Date(today.getTime()+dayIndex*msPerDay);
+          const isLate = day > endDate; // il giorno di termine è ancora "in tempo"
+          const cls = isLate ? 'late' : '';
+
           if(l1<=total1){
             const end=Math.min(l1+perDay-1,total1);
-            const list=[]; for(let n=l1;n<=end;n++) list.push(`Lezione ${n}`);
-            schedule1.push(`${dateStr}: ${list.join(", ")}`);
+            const nums=[]; for(let n=l1;n<=end;n++) nums.push(n);
+            schedule1.push(`<span class="${cls}">${formatDate(day)}: Lezione ${nums[0]}${nums.length>1?', '+nums.slice(1).join(', '):''}</span>`);
             l1=end+1;
           } else if(l2<=total2){
             const end=Math.min(l2+perDay-1,total2);
-            const list=[]; for(let n=l2;n<=end;n++) list.push(`Lezione ${n}`);
-            schedule2.push(`${dateStr}: ${list.join(", ")}`);
+            const nums=[]; for(let n=l2;n<=end;n++) nums.push(n);
+            schedule2.push(`<span class="${cls}">${formatDate(day)}: Lezione ${nums[0]}${nums.length>1?', '+nums.slice(1).join(', '):''}</span>`);
             l2=end+1;
           }
+          lastStudyTime = day.getTime();
+          dayIndex++;
         }
         statOutput.innerHTML=schedule1.join("<br>");
         autoOutput.innerHTML=schedule2.join("<br>");
 
         const rem1=Math.max(0,total1-last1), rem2=Math.max(0,total2-last2);
-        const totalRequiredDays = Math.ceil(rem1 / perDay) + Math.ceil(rem2 / perDay);
-        const delay = totalRequiredDays - daysRemaining; // >0 ritardo; <0 anticipo
-        const delayText = delay>0 ? `Ritardo di ${delay} giorni` : `Anticipo di ${-delay} giorni`;
-        summaryOutput.innerHTML=`${subj1}: ${rem1} lezioni rimanenti<br>${subj2}: ${rem2} lezioni rimanenti<br><strong>${delayText}</strong>`;
+
+        let delayText;
+        if(lastStudyTime===null){
+          delayText = "Nessuna lezione rimanente";
+        } else {
+          const lastStudyDate = new Date(lastStudyTime);
+          // normalizza a mezzanotte per sicurezza
+          const endMid = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          const lastMid = new Date(lastStudyDate.getFullYear(), lastStudyDate.getMonth(), lastStudyDate.getDate());
+          const diffDays = Math.round((lastMid - endMid)/msPerDay);
+
+          if(diffDays > 0){
+            delayText = `Ritardo di ${diffDays} giorni`;
+          } else if(diffDays < 0){
+            delayText = `Anticipo di ${-diffDays} giorni`;
+          } else {
+            delayText = "In tempo sulla scadenza";
+          }
+        }
+
+        summaryOutput.innerHTML = `${subj1}: ${rem1} lezioni rimanenti<br>${subj2}: ${rem2} lezioni rimanenti<br><strong>${delayText}</strong>`;
       }
 
       // Auto-recalc on parameter change
@@ -133,19 +199,43 @@
       watched.forEach(el=>{ ["change","input"].forEach(ev=> el.addEventListener(ev, updateSchedule)); });
 
       // Buttons
-      updateButton.addEventListener("click",updateSchedule);
-      exportButton.addEventListener("click",exportConfig);
-      importInput.addEventListener("change",importConfig);
+      if(exportButton) exportButton.addEventListener("click",exportConfig);
+      if(importInput) importInput.addEventListener("change",importConfig);
+
+      if(done1Button) done1Button.addEventListener("click",()=>{
+        const total1=Math.max(0,parseInt(subject1LessonsField.value)||0);
+        lastLesson1Field.value=total1;
+        updateSchedule();
+      });
+      if(done2Button) done2Button.addEventListener("click",()=>{
+        const total2=Math.max(0,parseInt(subject2LessonsField.value)||0);
+        lastLesson2Field.value=total2;
+        updateSchedule();
+      });
+      if(reset1Button) reset1Button.addEventListener("click",()=>{
+        lastLesson1Field.value=0;
+        updateSchedule();
+      });
+      if(reset2Button) reset2Button.addEventListener("click",()=>{
+        lastLesson2Field.value=0;
+        updateSchedule();
+      });
+      if(setTodayBtn) setTodayBtn.addEventListener("click",()=>{
+        dateField.value=new Date().toISOString().split("T")[0];
+        updateSchedule();
+      });
 
       // Init
-      dateField.value=new Date().toISOString().split("T")[0];
+      if(!dateField.value){
+        dateField.value=new Date().toISOString().split("T")[0];
+      }
       updateSchedule();
     });
   </script>
 </head>
 <body>
   <div class="wrap">
-    <h1>Study Planner v5</h1>
+    <h1>Study Planner v5.1</h1>
 
     <h2>Impostazioni</h2>
     <div class="card toolbar">
@@ -161,12 +251,24 @@
 
     <h2>Progressi</h2>
     <div class="card toolbar">
-      <label>Data odierna<input type="date" id="currentDate"></label>
+      <label>Data odierna
+        <input type="date" id="currentDate">
+        <button type="button" id="setTodayBtn">Oggi</button>
+      </label>
       <label><span id="ll1Text">Ultima lezione completata Materia 1</span>
-        <input type="number" id="lastLesson1" min="0" value="0"></label>
+        <input type="number" id="lastLesson1" min="0" value="0">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="reset1Button">RESET STUDIO</button>
+          <button type="button" id="done1Button">STUDIO TERMINATO</button>
+        </div>
+      </label>
       <label><span id="ll2Text">Ultima lezione completata Materia 2</span>
-        <input type="number" id="lastLesson2" min="0" value="0"></label>
-      <button id="updateButton">Aggiorna</button>
+        <input type="number" id="lastLesson2" min="0" value="0">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" id="reset2Button">RESET STUDIO</button>
+          <button type="button" id="done2Button">STUDIO TERMINATO</button>
+        </div>
+      </label>
     </div>
 
     <div class="columns">
@@ -185,6 +287,5 @@
       <div id="summaryOutput"></div>
     </div>
   </div>
-  <footer>Powered by ChatGPT</footer>
 </body>
 </html>
